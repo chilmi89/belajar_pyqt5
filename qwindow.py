@@ -1,16 +1,17 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QLabel
 
 app = QApplication([])
-window = QWidget()
+# window = QWidget()
+windows = QMainWindow()
 
-label = QLabel(parent=window)
+label = QLabel(parent=windows)
 label.setText('Hello im achmad chilmi')
 
 label.move(200, 10)
-button = QPushButton("Hello", parent=window)
+button = QPushButton("Hello", parent=windows)
 
 
 button.setText("button 1")
-window.show()
+windows.show()
 
 app.exec_()
