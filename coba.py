@@ -2,6 +2,10 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 from datetime import datetime
+from PyQt5.QtWidgets import QRadioButton
+import qrcode
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
 import mysql.connector
 
 
@@ -37,8 +41,8 @@ class Ui_MainWindow(object):
         self.centralwidget.setStyleSheet(
             "#centralwidget{\n"
             "    background-color: rgba(0, 0, 0, 0.5);\n"
-            "      padding: 30px;\n"
-            "      border-radius: 5px;\n"
+            "    padding: 30px;\n"
+            "    border-radius: 5px;\n"
             "}"
         )
         self.centralwidget.setObjectName("centralwidget")
@@ -71,8 +75,6 @@ class Ui_MainWindow(object):
         # Username
         self.label_2 = QtWidgets.QLabel(self.frame_2)
         self.label_2.setGeometry(QtCore.QRect(20, 40, 81, 41))
-        font = QtGui.QFont()
-        font.setFamily("Arial")
         font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
@@ -105,9 +107,16 @@ class Ui_MainWindow(object):
         self.form2.setAlignment(QtCore.Qt.AlignCenter)
         self.form2.setObjectName("form2")
 
+        # Radio Button
+        self.radio_button = QRadioButton(self.frame_2)
+        self.radio_button.setGeometry(QtCore.QRect(30, 200, 200, 30))
+        self.radio_button.setStyleSheet("color: white;")
+        self.radio_button.setText("Saya setuju dengan syarat dan ketentuan")
+        self.radio_button.setObjectName("radio_button")
+
         # Button
         self.button1 = QtWidgets.QPushButton(self.frame_2)
-        self.button1.setGeometry(QtCore.QRect(70, 230, 251, 41))
+        self.button1.setGeometry(QtCore.QRect(70, 250, 251, 41))
         font.setPointSize(12)
         self.button1.setFont(font)
         self.button1.setStyleSheet(
@@ -118,7 +127,6 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.frame_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.retranslateUi(MainWindow)
-        # self.button1.clicked.connect(self.show_new_window)
         self.button1.clicked.connect(self.login)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
@@ -137,6 +145,17 @@ class Ui_MainWindow(object):
     def login(self):
         username = self.form1.text().strip()
         password = self.form2.text().strip()
+        if not username or not password:
+            QMessageBox.warning(
+                None, "Login Gagal", "Username atau password tidak boleh kosong!"
+            )
+            return
+
+        if not self.radio_button.isChecked():
+            QMessageBox.warning(
+                None, "Login Gagal", "Anda harus menyetujui syarat dan ketentuan!"
+            )
+            return
 
         if not username or not password:
             QMessageBox.warning(
@@ -419,6 +438,8 @@ class Ui_new_window(object):
 
         button_widget = QtWidgets.QWidget()
         button_widget.setLayout(button_layout)
+        
+        # button masuk ke dalam table
         self.table.setCellWidget(row, 5, button_widget)
     
     def open_add_window(self):
@@ -596,7 +617,7 @@ class Ui_new_window(object):
             self.cursor.execute(query_expense)
             total_expense = self.cursor.fetchone()[0] or 0  # Jika hasil None, ganti dengan 0
 
-            # Perbarui nilai di input field
+            # Perbarui nilai di input field total masuk dan keluar 
             self.total_input.setText(f"Rp {total_income:,.2f}")  # Format angka dengan koma dan dua desimal
             self.total_keluar_input.setText(f"Rp {total_expense:,.2f}")
 
@@ -628,33 +649,33 @@ class CenterDelegate(QtWidgets.QStyledItemDelegate):
         super().initStyleOption(option, index)
         option.displayAlignment = QtCore.Qt.AlignCenter
 
+from PyQt5 import QtWidgets, QtCore
 
 class UI_addWidget(QtWidgets.QWidget):
-    def __init__(self, db_connection , refresh_callback=None, parent=None):
+    def __init__(self, db_connection, refresh_callback=None, parent=None):
         super(UI_addWidget, self).__init__(parent)
 
         self.db_connection = db_connection
         self.cursor = db_connection.cursor()
-        
-        self.refresh_callback = refresh_callback 
-        self.setWindowTitle("tambahkan Transaksi")
-        
+
+        self.refresh_callback = refresh_callback
+        self.setWindowTitle("Tambahkan Transaksi")
+
         self.setGeometry(100, 100, 400, 250)
 
         # Layout
         self.layout = QtWidgets.QFormLayout(self)
 
-        # Create form fields
-        self.id_input = QtWidgets.QLineEdit(self)
+        # Create form fields (remove ID input)
         self.date_input = QtWidgets.QLineEdit(self)
-        self.type_input = QtWidgets.QLineEdit(self)
+        self.type_input = QtWidgets.QComboBox(self)
+        self.type_input.addItems(["income", "expense"])  # Combo box options
         self.amount_input = QtWidgets.QLineEdit(self)
         self.description_input = QtWidgets.QLineEdit(self)
 
-        self.layout.addRow("ID:", self.id_input)
         self.layout.addRow("Tanggal Transaksi:", self.date_input)
         self.layout.addRow("Type:", self.type_input)
-        self.layout.addRow("Nominal", self.amount_input)
+        self.layout.addRow("Nominal:", self.amount_input)
         self.layout.addRow("Deskripsi:", self.description_input)
 
         # Submit button
@@ -668,7 +689,6 @@ class UI_addWidget(QtWidgets.QWidget):
             "background-color: #000; color: white; border: 1px solid #fff; "
             "padding: 5px; border-radius: 5px;"
         )
-        self.id_input.setStyleSheet(input_style)
         self.date_input.setStyleSheet(input_style)
         self.type_input.setStyleSheet(input_style)
         self.amount_input.setStyleSheet(input_style)
@@ -688,17 +708,14 @@ class UI_addWidget(QtWidgets.QWidget):
         x = (screen_width - width) // 2
         y = (screen_height - height) // 2
         self.move(x, y)
-        # self.calculate_totals()
 
     def submit_form(self):
         # Collect form data
-        id_value = self.id_input.text()
         date_value = self.date_input.text()
-        type_value = self.type_input.text()
+        type_value = self.type_input.currentText()  # Use currentText() for QComboBox
         amount_value = self.amount_input.text()
         description_value = self.description_input.text()
 
-        
         # Validation
         if not all([date_value, type_value, amount_value, description_value]):
             error_msg = QtWidgets.QMessageBox(self)
@@ -741,13 +758,7 @@ class UI_addWidget(QtWidgets.QWidget):
             error_msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
             error_msg.show()
 
-    def show_detail(self):
-        # Fungsi ini akan menampilkan detail tambahan ketika tombol "Detail" diklik
-        detail_message = QtWidgets.QMessageBox()
-        detail_message.setWindowTitle("Detail Transaksi")
-        detail_message.setText("Fungsi ini dapat diisi dengan detail laporan transaksi.")
-        detail_message.setIcon(QtWidgets.QMessageBox.Information)
-        detail_message.exec_()
+
 
 class UI_EditWidget(QtWidgets.QWidget):
     def __init__(self, db_connection, transaction_data=None, populate_table_callback=None, parent=None):
@@ -766,19 +777,25 @@ class UI_EditWidget(QtWidgets.QWidget):
         # Layout
         self.layout = QtWidgets.QFormLayout(self)
 
-        # Create form fields
         self.id_input = QtWidgets.QLineEdit(self)
         self.id_input.setReadOnly(True)  # ID tidak bisa diubah
+
         self.date_input = QtWidgets.QLineEdit(self)
-        self.type_input = QtWidgets.QLineEdit(self)
+
+        # Ubah type_input menjadi QComboBox
+        self.type_input = QtWidgets.QComboBox(self)
+        self.type_input.addItems(["income", "expense"])  # Tambahkan pilihan untuk combobox
+
         self.amount_input = QtWidgets.QLineEdit(self)
         self.description_input = QtWidgets.QLineEdit(self)
 
+        # Tambahkan semua elemen ke layout
         self.layout.addRow("ID:", self.id_input)
         self.layout.addRow("Tanggal Transaksi:", self.date_input)
-        self.layout.addRow("Type:", self.type_input)
+        self.layout.addRow("Type:", self.type_input)  # Gunakan combobox untuk input type
         self.layout.addRow("Amount:", self.amount_input)
         self.layout.addRow("Description:", self.description_input)
+
 
         # Submit button
         self.submit_button = QtWidgets.QPushButton("Update", self)
@@ -814,7 +831,7 @@ class UI_EditWidget(QtWidgets.QWidget):
         if self.transaction_data:
             self.id_input.setText(str(self.transaction_data[0]))
             self.date_input.setText(self.transaction_data[1])
-            self.type_input.setText(self.transaction_data[2])
+            self.type_input.setCurrentText(self.transaction_data[2])
             self.amount_input.setText(str(self.transaction_data[3]))
             self.description_input.setText(self.transaction_data[4])
 
@@ -825,7 +842,7 @@ class UI_EditWidget(QtWidgets.QWidget):
     # Mengambil data dari form
         id_value = self.id_input.text()
         date_value = self.date_input.text()
-        type_value = self.type_input.text()
+        type_value = self.type_input.currentText()
         amount_value = self.amount_input.text()
         description_value = self.description_input.text()
 
@@ -966,7 +983,6 @@ class UI_DeleteWidget(QtWidgets.QWidget):
 
         
 
-
 class UI_Detail:
     def __init__(self, db_connection):
         self.db_connection = db_connection
@@ -974,9 +990,9 @@ class UI_Detail:
 
     def setupUi(self, DetailWindow):
         DetailWindow.setObjectName("DetailWindow")
-        DetailWindow.resize(600, 500)
+        DetailWindow.resize(600, 700)
 
-        # Set background color to white
+        # Set background color to black
         DetailWindow.setStyleSheet("background-color: black;")
 
         self.centralwidget = QtWidgets.QWidget(DetailWindow)
@@ -992,68 +1008,54 @@ class UI_Detail:
         self.title.setFont(font)
         self.title.setAlignment(QtCore.Qt.AlignCenter)
         self.title.setText("Detail Transaksi")
-        # Change text color to white
         self.title.setStyleSheet("color: white;")
 
-        
-        # Table Income
-        self.income_table = QtWidgets.QTableWidget(self.centralwidget)
-        self.income_table.setGeometry(QtCore.QRect(20, 50, 260, 200))
-        self.income_table.setColumnCount(2)
-        self.income_table.setHorizontalHeaderLabels(["Income", "Tanggal"])
-        self.income_table.horizontalHeader().setStretchLastSection(True)
-        self.income_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.income_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.income_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        # Income and Expense Tables
+        self.income_table = self.create_table(20, 50, ["Income", "Tanggal"])
+        self.expense_table = self.create_table(320, 50, ["Expense", "Tanggal"])
 
-        # Set style for header, data, and scrollbar
-        self.income_table.setStyleSheet("""
-                QHeaderView::section { 
-                    background-color: #333; 
-                    color: white; 
-                    font-weight: bold; 
-                    padding: 4px;
-                    border: none;
-                    text-align: center;
-                }
-                QTableWidget::item { 
-                    color: white; 
-                    background-color: #000;  
-                }
-                QTableWidget { 
-                    background-color: #000; 
-                    border: none;
-                }
-                QTableWidget::item:selected { 
-                    background-color: #444;  
-                    color: white;
-                }
-                QScrollBar:vertical {
-                    background: #333; 
-                    width: 10px; 
-                }
-                QScrollBar::handle:vertical {
-                    background: #555; 
-                    min-height: 20px;
-                }
-                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                    background: none;
-                }
-            """)
+        # Labels and inputs for totals
+        self.income_label, self.income_input = self.create_total_input(20, 270, "Total Income:")
+        self.expense_label, self.expense_input = self.create_total_input(20, 310, "Total Expense:")
+        self.balance_label, self.balance_input = self.create_total_input(20, 350, "Total Uang:")
 
-        # Table Expense
-        self.expense_table = QtWidgets.QTableWidget(self.centralwidget)
-        self.expense_table.setGeometry(QtCore.QRect(320, 50, 260, 200))
-        self.expense_table.setColumnCount(2)
-        self.expense_table.setHorizontalHeaderLabels(["Expense", "Tanggal"])
-        self.expense_table.horizontalHeader().setStretchLastSection(True)
-        self.expense_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.expense_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.expense_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        # Status label
+        self.status_label = QtWidgets.QLabel(self.centralwidget)
+        self.status_label.setGeometry(QtCore.QRect(20, 390, 560, 40))
+        font.setPointSize(14)
+        self.status_label.setFont(font)
+        self.status_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.status_label.setStyleSheet("""
+            color: white; 
+            background-color: black; 
+            border: 1px solid white; 
+            border-radius: 10px; 
+            padding: 5px;
+        """)
 
-        # Set style for header, data, and scrollbar
-        # Set style for header, data, and scrollbar
-        self.expense_table.setStyleSheet("""
+        # QR Code Display
+        self.qr_label = QtWidgets.QLabel(self.centralwidget)
+        self.qr_label.setGeometry(QtCore.QRect(200, 450, 200, 200))
+        self.qr_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.qr_label.setStyleSheet("background-color: white; border: 2px solid black;")
+
+        # Populate tables and calculate profit/loss
+        self.populate_tables()
+        self.calculate_profit_loss()
+        self.generate_qr_code()
+
+        DetailWindow.setCentralWidget(self.centralwidget)
+
+    def create_table(self, x, y, headers):
+        table = QtWidgets.QTableWidget(self.centralwidget)
+        table.setGeometry(QtCore.QRect(x, y, 260, 200))
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.horizontalHeader().setStretchLastSection(True)
+        table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        table.setStyleSheet("""
             QHeaderView::section { 
                 background-color: #333; 
                 color: white; 
@@ -1074,168 +1076,70 @@ class UI_Detail:
                 background-color: #444;  
                 color: white;
             }
-            QScrollBar:vertical {
-                background: #333; 
-                width: 10px; 
-            }
-            QScrollBar::handle:vertical {
-                background: #555; 
-                min-height: 20px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                background: none;
-            }
         """)
-        
-        # Label and Input for Total Income
-        self.income_label = QtWidgets.QLabel(self.centralwidget)
-        self.income_label.setGeometry(QtCore.QRect(20, 270, 150, 30))
+        return table
+
+    def create_total_input(self, x, y, label_text):
+        label = QtWidgets.QLabel(self.centralwidget)
+        label.setGeometry(QtCore.QRect(x, y, 150, 30))
+        font = QtGui.QFont()
         font.setPointSize(12)
-        self.income_label.setFont(font)
-        self.income_label.setText("Total Income:")
-        self.income_label.setAlignment(QtCore.Qt.AlignCenter)
-        # Style with white text, black background, white border, and rounded corners
-        self.income_label.setStyleSheet("""
+        label.setFont(font)
+        label.setText(label_text)
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setStyleSheet("""
             color: white; 
             background-color: black; 
             border: 1px solid white; 
             border-radius: 10px; 
             padding: 5px;
         """)
-
-        self.income_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.income_input.setGeometry(QtCore.QRect(180, 270, 150, 30))
-        self.income_input.setReadOnly(True)
-        # Style the input with black background, white border, and rounded corners
-        self.income_input.setStyleSheet("""
+        input_field = QtWidgets.QLineEdit(self.centralwidget)
+        input_field.setGeometry(QtCore.QRect(x + 160, y, 150, 30))
+        input_field.setReadOnly(True)
+        input_field.setStyleSheet("""
             background-color: black; 
             color: white; 
             border: 1px solid white; 
             border-radius: 10px; 
             padding: 5px;
         """)
-
-        # Label and Input for Total Expense
-        self.expense_label = QtWidgets.QLabel(self.centralwidget)
-        self.expense_label.setGeometry(QtCore.QRect(20, 310, 150, 30))
-        self.expense_label.setFont(font)
-        self.expense_label.setText("Total Expense:")
-        self.expense_label.setAlignment(QtCore.Qt.AlignCenter)
-        # Style with white text, black background, white border, and rounded corners
-        self.expense_label.setStyleSheet("""
-            color: white; 
-            background-color: black; 
-            border: 1px solid white; 
-            border-radius: 10px; 
-            padding: 5px;
-        """)
-
-        self.expense_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.expense_input.setGeometry(QtCore.QRect(180, 310, 150, 30))
-        self.expense_input.setReadOnly(True)
-        # Style the input with black background, white border, and rounded corners
-        self.expense_input.setStyleSheet("""
-            background-color: black; 
-            color: white; 
-            border: 1px solid white; 
-            border-radius: 10px; 
-            padding: 5px;
-        """)
-
-        # Label and Input for Total Balance
-        self.balance_label = QtWidgets.QLabel(self.centralwidget)
-        self.balance_label.setGeometry(QtCore.QRect(20, 350, 150, 30))
-        self.balance_label.setFont(font)
-        self.balance_label.setText("Total Uang")
-        self.balance_label.setAlignment(QtCore.Qt.AlignCenter)
-        # Style with white text, black background, white border, and rounded corners
-        self.balance_label.setStyleSheet("""
-            color: white; 
-            background-color: black; 
-            border: 1px solid white; 
-            border-radius: 10px; 
-            padding: 5px;
-        """)
-
-        self.balance_input = QtWidgets.QLineEdit(self.centralwidget)
-        self.balance_input.setGeometry(QtCore.QRect(180, 350, 150, 30))
-        self.balance_input.setReadOnly(True)
-        # Style the input with black background, white border, and rounded corners
-        self.balance_input.setStyleSheet("""
-            background-color: black; 
-            color: white; 
-            border: 1px solid white; 
-            border-radius: 10px; 
-            padding: 5px;
-        """)
-
-        # Label for Profit/Loss Status
-        self.status_label = QtWidgets.QLabel(self.centralwidget)
-        self.status_label.setGeometry(QtCore.QRect(20, 390, 560, 40))
-        font.setPointSize(14)
-        self.status_label.setFont(font)
-        self.status_label.setAlignment(QtCore.Qt.AlignCenter)
-        # Style the label with white text, black background, white border, and rounded corners
-        self.status_label.setStyleSheet("""
-            color: white; 
-            background-color: black; 
-            border: 1px solid white; 
-            border-radius: 10px; 
-            padding: 5px;
-        """)
-
-
-        # Populate tables and calculate profit/loss
-        self.populate_tables()
-        self.calculate_profit_loss()
-
-        DetailWindow.setCentralWidget(self.centralwidget)
+        return label, input_field
 
     def populate_tables(self):
-        # Fetch Income data from database
+        # Fetch data for income and expense tables
         query_income = "SELECT amount, transaction_date FROM transactions WHERE type = 'income'"
         self.cursor.execute(query_income)
         income_data = self.cursor.fetchall()
-        self.income_table.setRowCount(len(income_data))
+        self.populate_table_data(self.income_table, income_data)
 
-        for row_index, row_data in enumerate(income_data):
-            amount = str(row_data[0])
-            transaction_date = row_data[1].strftime("%Y-%m-%d")
-            self.income_table.setItem(row_index, 0, QtWidgets.QTableWidgetItem(amount))
-            self.income_table.setItem(row_index, 1, QtWidgets.QTableWidgetItem(transaction_date))
-
-        # Fetch Expense data from database
         query_expense = "SELECT amount, transaction_date FROM transactions WHERE type = 'expense'"
         self.cursor.execute(query_expense)
         expense_data = self.cursor.fetchall()
-        self.expense_table.setRowCount(len(expense_data))
+        self.populate_table_data(self.expense_table, expense_data)
 
-        for row_index, row_data in enumerate(expense_data):
+    def populate_table_data(self, table, data):
+        table.setRowCount(len(data))
+        for row_index, row_data in enumerate(data):
             amount = str(row_data[0])
             transaction_date = row_data[1].strftime("%Y-%m-%d")
-            self.expense_table.setItem(row_index, 0, QtWidgets.QTableWidgetItem(amount))
-            self.expense_table.setItem(row_index, 1, QtWidgets.QTableWidgetItem(transaction_date))
+            table.setItem(row_index, 0, QtWidgets.QTableWidgetItem(amount))
+            table.setItem(row_index, 1, QtWidgets.QTableWidgetItem(transaction_date))
 
     def calculate_profit_loss(self):
-        # Fetch and calculate total income
         query_total_income = "SELECT SUM(amount) FROM transactions WHERE type = 'income'"
         self.cursor.execute(query_total_income)
         total_income = self.cursor.fetchone()[0] or 0
 
-        # Fetch and calculate total expense
         query_total_expense = "SELECT SUM(amount) FROM transactions WHERE type = 'expense'"
         self.cursor.execute(query_total_expense)
         total_expense = self.cursor.fetchone()[0] or 0
 
-        # Calculate total balance
         total_balance = total_income - total_expense
-
-        # Update inputs and status
         self.income_input.setText(f"Rp {total_income:,}")
         self.expense_input.setText(f"Rp {total_expense:,}")
         self.balance_input.setText(f"Rp {total_balance:,}")
 
-        # Update status label
         if total_balance > 0:
             self.status_label.setText("Status: Anda sedang LABA!")
             self.status_label.setStyleSheet("color: green; border: 1px solid green; border-radius: 10px;")
@@ -1244,10 +1148,31 @@ class UI_Detail:
             self.status_label.setStyleSheet("color: red; border: 1px solid red; border-radius: 10px;")
         else:
             self.status_label.setText("Status: Tidak ada Laba atau Rugi (NOL).")
-            self.status_label.setStyleSheet("color: black; border: 1px solid black; border-radius: 10px;")
+            self.status_label.setStyleSheet("color: white; border: 1px solid white; border-radius: 10px;")
+
+    def generate_qr_code(self):
+        # Combine data from tables into a string
+        data = {
+            "income": [(self.income_table.item(row, 0).text(), self.income_table.item(row, 1).text())
+                    for row in range(self.income_table.rowCount())],
+            "expense": [(self.expense_table.item(row, 0).text(), self.expense_table.item(row, 1).text())
+                        for row in range(self.expense_table.rowCount())]
+        }
+        qr = qrcode.QRCode()
+        qr.add_data(data)
+        qr.make(fit=True)
+        img = qr.make_image(fill="black", back_color="white")
+        
+        # Save QR Code to a temporary file
+        temp_path = "temp_qr_code.png"
+        img.save(temp_path)
+
+        # Load the QR Code image into QLabel
+        pixmap = QtGui.QPixmap(temp_path)
+        self.qr_label.setPixmap(pixmap.scaled(200, 200, QtCore.Qt.KeepAspectRatio))
 
 
- 
+
 
 if __name__ == "__main__":
     import sys
